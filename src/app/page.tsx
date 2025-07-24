@@ -1,7 +1,8 @@
 "use client";
 import Image from "next/image";
-import Navbar from "@/app/components/Navbar";
-import Footer from "@/app/components/Footer";
+import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
+import SessionProviderWrapper from "./components/SessionProviderWrapper";
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -75,7 +76,7 @@ export default function Home() {
                   Go to Dashboard
                 </button>
                 <span className="inline-block bg-blue-100 text-blue-800 px-6 py-4 rounded-full font-medium text-lg">
-                  Welcome, {session.user?.name || session.user?.email}!
+                  Welcome, {session.user?.username || session.user?.email}!
                 </span>
               </div>
             ) : (
