@@ -8,7 +8,7 @@ export async function middleware(request: NextRequest) {
 
   // If user is authenticated and trying to access root page, redirect to protected homepage
   if (request.nextUrl.pathname === '/' && isAuthenticated) {
-    return NextResponse.redirect(new URL('/homepage', request.url));
+    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   // If user is not authenticated and trying to access protected routes, redirect to login
@@ -18,7 +18,7 @@ export async function middleware(request: NextRequest) {
 
   // If user is authenticated and trying to access login/register, redirect to homepage
   if ((request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/register') && isAuthenticated) {
-    return NextResponse.redirect(new URL('/homepage', request.url));
+    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   return NextResponse.next();
