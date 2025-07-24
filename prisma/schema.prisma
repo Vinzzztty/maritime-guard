@@ -44,6 +44,7 @@ model tobacco_users {
   email    String
   username String
   password String
+  ships    Ship[]   @relation("tobacco_usersToShip")
 
   @@map("tobacco_users")
 }
@@ -61,11 +62,10 @@ model Ship {
   owner_contact  String
   status         ShipStatus @default(Inactive)
   user_id        BigInt? // New nullable field for foreign key
+  user           tobacco_users? @relation("tobacco_usersToShip", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   monitorShips   Monitor_ship_id[]
   monitorShipLogs Monitor_ship_log[]
   
-  user           tobacco_users? @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
   @@id([IMO_NUMBER])
   @@map("ships")
 }
