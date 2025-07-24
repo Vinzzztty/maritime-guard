@@ -1,12 +1,42 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 generator client {
   provider = "prisma-client-js"
 }
 
-
-
 datasource db {
-    provider = "postgresql"
-    url = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Existing tables from database - DO NOT MODIFY
+model ideas {
+  id          Int       @id @default(autoincrement())
+  name        String
+  model_type  String
+  category    String
+  scope       String
+  keyword     String
+  title       String
+  description String
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([created_at], map: "idx_ideas_created_at")
+  @@index([name], map: "idx_ideas_name")
+}
+
+model users {
+  id           String   @id @default(dbgenerated("concat('usr_', replace((gen_random_uuid())::text, '-'::text, ''::text))"))
+  firstName    String?
+  lastName     String?
+  email        String   @unique
+  password     String?
+  name         String?
+  avatar       String?
+  authProvider String   @default("credentials")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now())
 }
 
 model tobacco_users {
@@ -14,7 +44,71 @@ model tobacco_users {
   email    String
   username String
   password String
+  ships    Ship[]   @relation("tobacco_usersToShip")
 
   @@map("tobacco_users")
 }
 
+// New tables to be added
+model Ship {
+  shipName       String
+  IMO_NUMBER     String @unique
+  Year_built     Int
+  owner          String
+  location_from  String
+  location_to    String
+  Coordinate_x   Float
+  Coordinate_y   Float
+  owner_contact  String
+  status         ShipStatus @default(Inactive)
+  user_id        BigInt? // New nullable field for foreign key
+  user           tobacco_users? @relation("tobacco_usersToShip", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  monitorShips   Monitor_ship_id[]
+  monitorShipLogs Monitor_ship_log[]
+  
+  @@id([IMO_NUMBER])
+  @@map("ships")
+}
+
+enum ShipStatus {
+  Active
+  Inactive
+}
+
+model Monitor_ship_id {
+  id_ship  String @unique
+  sensor1  String
+  sensor2  String
+  sensor3  String
+  Status   SensorStatus
+  ship     Ship   @relation(fields: [id_ship], references: [IMO_NUMBER], onDelete: Cascade)
+
+  @@id([id_ship])
+  @@map("monitor_ship_id")
+}
+
+enum CorroctionStatus {
+  Low
+  Medium
+  High
+}
+
+model Monitor_ship_log {
+  id                 Int      @id @default(autoincrement())
+  id_ship            String?
+  sensor1            String?
+  sensor2            String?
+  sensor3            String?
+  sensor4            String?
+  corroction_status  CorroctionStatus
+  timestamp          DateTime? @default(now())
+  ship               Ship?    @relation(fields: [id_ship], references: [IMO_NUMBER])
+  
+  @@map("monitor_ship_log")
+}
+
+enum SensorStatus {
+  Low
+  Medium
+  High
+}
