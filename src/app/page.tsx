@@ -75,7 +75,7 @@ export default function Home() {
                   Go to Dashboard
                 </button>
                 <span className="inline-block bg-blue-100 text-blue-800 px-6 py-4 rounded-full font-medium text-lg">
-                  Welcome, {session.user?.username || session.user?.email}!
+                  Welcome, {session.user?.name || session.user?.email}!
                 </span>
               </div>
             ) : (
