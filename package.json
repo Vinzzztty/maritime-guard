@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "vercel:build": "npm install && npx prisma generate && npm run build",
+    "postinstall": "prisma generate",
+    "lint": "next lint",
+    "prisma:generate": "prisma generate",
+    "prisma:studio": "prisma studio"
   },
   "dependencies": {
     "@prisma/client": "^6.12.0",
