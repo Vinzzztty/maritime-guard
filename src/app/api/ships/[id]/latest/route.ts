@@ -44,5 +44,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
   // Filter out any nulls (in case a device has no logs)
   const resultDevices = deviceLogs.filter(Boolean);
 
+  console.log("Sample entry", resultDevices[0]);
+
   return NextResponse.json({ devices: resultDevices });
 } 

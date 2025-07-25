@@ -106,7 +106,7 @@ export default function ProtectedHomepage() {
               Welcome back, {session.user?.username || session.user?.email}!
             </h1>
             <p className="text-gray-600">
-              Monitor your tobacco shipping fleet and track vessel conditions in real-time.
+            Monitor your shipping fleet and track Ship conditions in real-time.
             </p>
           </div>
 

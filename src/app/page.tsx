@@ -54,10 +54,11 @@ export default function Home() {
               Detect Corrosion.<br className="hidden sm:block" /> Protect Your Ship Hulls.
             </h1>
             <p className="text-xl sm:text-2xl mb-4 max-w-2xl mx-auto text-blue-50 font-medium drop-shadow">
-              Advanced sensor-based web application for real-time detection and monitoring of corrosion on ship hulls.
+            The MaritimeGuard Dashboard offers an advanced, real-time interface for comprehensive corrosion monitoring across vessel hulls.
             </p>
             <p className="mb-8 text-lg text-blue-100 max-w-xl">
-              <span className="font-semibold text-yellow-200">MaritimeGuard</span> empowers ship owners and operators to ensure safety, reduce maintenance costs, and comply with maritime regulations.
+              <span className="font-semibold text-yellow-200">Engineered for performance, compliance, and operational clarity,</span> the platform integrates intelligent sensor data with actionable insights empowering ship managers and engineers to make informed maintenance decisions with confidence.
+
             </p>
             
             {/* Conditional Button Display */}
@@ -108,8 +109,9 @@ export default function Home() {
         {/* Problem & Solution */}
         <section className="py-16 px-4 max-w-3xl mx-auto text-center">
           <h2 className="text-3xl font-bold mb-6 text-blue-800">Corrosion Threatens Ship Hull Integrity and Safety</h2>
-          <p className="mb-4 text-lg text-gray-700">Corrosion on ship hulls leads to costly repairs, operational downtime, and safety risks. Manual inspections are time-consuming and often miss early signs of damage.</p>
-          <p className="font-semibold text-blue-700">Our web app delivers continuous, sensor-driven monitoring—providing early warnings and actionable insights to keep your fleet seaworthy and efficient.</p>
+          <p className="mb-4 text-lg text-gray-700">Corrosion Threatens Ship Hull Structural Strength and Safety</p>
+          <p className="font-semibold text-blue-700">Our web app delivers continuous, sensor driven monitoring providing early warnings and actionable insights to keep your Ship seaworthy and efficient.
+          </p>
         </section>
 
         {/* Features & Benefits */}
@@ -189,6 +191,41 @@ export default function Home() {
           </div>
         </section>
 
+                {/* Education Get Know Section */}
+                <section id="education-blog" className="py-20 px-4 bg-gradient-to-br from-white via-blue-50 to-blue-100">
+          <h2 className="text-3xl font-bold text-center mb-12 text-blue-800">Get Know More</h2>
+          <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-3 max-w-6xl mx-auto">
+            {[
+              {
+                slug: "why-corrosion-matters",
+                title: "Why Corrosion Matters in Maritime Industry",
+                description: "Understand the impact of corrosion on ships and why early detection is crucial for safety and cost savings.",
+              },
+              {
+                slug: "sensor-technology-explained",
+                title: "How Our Sensor Technology Works",
+                description: "A deep dive into the science and technology behind our real-time corrosion sensors for ship hulls.",
+              },
+              {
+                slug: "compliance-and-reporting",
+                title: "Compliance & Reporting Simplified",
+                description: "Learn how our platform helps you meet maritime regulations and generate compliance-ready reports easily.",
+              },
+            ].map((post) => (
+              <div key={post.slug} className="bg-white rounded-2xl shadow-xl p-8 flex flex-col items-start hover:shadow-2xl transition-all duration-200 group border-t-4 border-blue-400 hover:scale-105 animate-fade-in-up">
+                <h3 className="font-semibold mb-2 text-blue-700 text-lg">{post.title}</h3>
+                <p className="text-gray-600 mb-4">{post.description}</p>
+                <a
+                  href={`/education/${post.slug}`}
+                  className="mt-auto inline-block bg-blue-600 text-white px-6 py-2 rounded-full font-bold text-base shadow-lg hover:bg-blue-700 transition-all duration-200"
+                >
+                  Read More
+                </a>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* FAQ */}
         <section id="faq" className="py-20 px-4 max-w-3xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12 text-blue-800">Frequently Asked Questions</h2>
@@ -215,6 +252,8 @@ export default function Home() {
             ))}
           </div>
         </section>
+
+
 
         {/* Contact Section */}
         <section id="contact" className="py-20 px-4 bg-blue-50">

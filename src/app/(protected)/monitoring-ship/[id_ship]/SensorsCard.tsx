@@ -1,15 +1,17 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 
-interface Sensor {
-  id: number;
-  name: string;
+type Sensor = {
+  value: number;
   status: string;
-  color: string;
-  value: number | null;
-  unit: string;
-  timestamp?: string; // Add timestamp if available from API
-}
+};
+
+type SensorHistoryEntry = {
+  device: string;
+  timestamp: string;
+  sensors: Sensor[];
+  [key: string]: any; // for other possible fields
+};
 
 interface DeviceStatus {
   device1?: string;
@@ -21,9 +23,10 @@ interface DeviceStatus {
 interface SensorsCardProps {
   shipId: string;
   shipStatus: boolean;
+  sensorHistory?: SensorHistoryEntry[];
 }
 
-export default function SensorsCard({ shipId, shipStatus }: SensorsCardProps) {
+export default function SensorsCard({ shipId, shipStatus, sensorHistory }: SensorsCardProps) {
   const [devices, setDevices] = useState<any[]>([]);
   const [deviceStatus, setDeviceStatus] = useState<DeviceStatus>({});
   const [loading, setLoading] = useState(true);
@@ -140,12 +143,22 @@ export default function SensorsCard({ shipId, shipStatus }: SensorsCardProps) {
                   </span>
                 )}
                 <div className="grid grid-cols-2 gap-4 w-full">
-                  {device.sensors.map((sensor: any) => (
-                    <div key={sensor.id} className="flex flex-col items-center p-2 border rounded-lg bg-blue-50">
-                      <span className="text-xs text-gray-500 mb-1">Sensor {sensor.id}</span>
-                      <span className="text-xl font-bold text-gray-900">{sensor.value !== null && sensor.value !== undefined ? sensor.value : '--'}</span>
-                    </div>
-                  ))}
+                  {device.sensors.map((sensor: any, sensorIdx: number) => {
+                    // Map sensor index to descriptive label
+                    const sensorLabels = [
+                      'Sensor 1 Humidity',
+                      'Sensor 2 pH',
+                      'Sensor 3 Conductivity',
+                      'Sensor 4 Dew point',
+                    ];
+                    const label = sensorLabels[sensorIdx] || `Sensor ${sensor.id}`;
+                    return (
+                      <div key={sensor.id} className="flex flex-col items-center p-2 border rounded-lg bg-blue-50">
+                        <span className="text-xs text-gray-500 mb-1">{label}</span>
+                        <span className="text-xl font-bold text-gray-900">{sensor.value !== null && sensor.value !== undefined ? sensor.value : '--'}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>

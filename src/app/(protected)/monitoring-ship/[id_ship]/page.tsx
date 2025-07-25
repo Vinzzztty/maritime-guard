@@ -48,6 +48,11 @@ export default function MonitoringShipPage() {
   const [sensorHistory, setSensorHistory] = useState<any[]>([]);
   const isFirstSensorLoad = useRef(true);
 
+  // State for device statuses from ship_monitor
+  const [deviceStatuses, setDeviceStatuses] = useState<{device1?: string, device2?: string, device3?: string, device4?: string}>({});
+  const [deviceStatusLoading, setDeviceStatusLoading] = useState(true);
+  const [deviceStatusError, setDeviceStatusError] = useState<string | null>(null);
+
   const shipId = params.id_ship as string;
 
   useEffect(() => {
@@ -106,6 +111,28 @@ export default function MonitoringShipPage() {
 
     fetchShipData(true); // Initial load shows spinner
     fetchSensorHistory();
+
+    const fetchDeviceStatuses = async () => {
+      setDeviceStatusLoading(true);
+      setDeviceStatusError(null);
+      try {
+        const res = await fetch(`/api/ship_monitor/${shipId}`);
+        if (!res.ok) throw new Error('Failed to fetch device statuses');
+        const data = await res.json();
+        setDeviceStatuses({
+          device1: data.device1,
+          device2: data.device2,
+          device3: data.device3,
+          device4: data.device4,
+        });
+      } catch (err: any) {
+        setDeviceStatusError(err.message || 'Failed to fetch device statuses');
+        setDeviceStatuses({});
+      } finally {
+        setDeviceStatusLoading(false);
+      }
+    };
+    fetchDeviceStatuses();
     // Removed polling/interval logic
     return () => {};
   }, [session, status, router, shipId]);
@@ -222,10 +249,39 @@ export default function MonitoringShipPage() {
     return null;
   }
 
-  const quality = getOverallQuality(ship.sensors);
-
   // Only keep the most recent 60 sensor history entries for visualization
   const recentSensorHistory = sensorHistory.slice(0, 60);
+
+  // Use device1, device2, device3, device4 from deviceStatuses as status values
+  const allStatuses = [deviceStatuses.device1, deviceStatuses.device2, deviceStatuses.device3, deviceStatuses.device4].filter(Boolean);
+
+  // Debug logs
+  console.log('deviceStatuses', deviceStatuses);
+  console.log('allStatuses', allStatuses);
+
+  // Determine overall status
+  let overallStatus = "Unknown";
+  if (allStatuses.length === 0) {
+    overallStatus = "Unknown";
+  } else if (allStatuses.includes("High")) {
+    overallStatus = "High";
+  } else if (allStatuses.includes("Medium")) {
+    overallStatus = "Medium";
+  } else if (allStatuses.every(status => status === "Low")) {
+    overallStatus = "Low";
+  }
+  console.log('overallStatus', overallStatus);
+
+  const quality = {
+    label: overallStatus === "High" ? "Critical"
+          : overallStatus === "Medium" ? "Warning"
+          : overallStatus === "Low" ? "Good"
+          : "Unknown",
+    color: overallStatus === "High" ? "red"
+          : overallStatus === "Medium" ? "yellow"
+          : overallStatus === "Low" ? "green"
+          : "gray"
+  };
 
   // Prepare data for line chart visualization (last 60 entries)
   const chartLabels = recentSensorHistory.map(entry => new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
@@ -237,28 +293,28 @@ export default function MonitoringShipPage() {
     labels: chartLabels,
     datasets: [
       {
-        label: 'Sensor 1',
+        label: 'Sensor 1 Humidity',
         data: sensor1Data,
         borderColor: 'rgba(59,130,246,1)', // blue-500
         backgroundColor: 'rgba(59,130,246,0.1)',
         tension: 0.4,
       },
       {
-        label: 'Sensor 2',
+        label: 'Sensor 2 pH',
         data: sensor2Data,
         borderColor: 'rgba(16,185,129,1)', // green-500
         backgroundColor: 'rgba(16,185,129,0.1)',
         tension: 0.4,
       },
       {
-        label: 'Sensor 3',
+        label: 'Sensor 3 Conductivity',
         data: sensor3Data,
         borderColor: 'rgba(234,179,8,1)', // yellow-500
         backgroundColor: 'rgba(234,179,8,0.1)',
         tension: 0.4,
       },
       {
-        label: 'Sensor 4',
+        label: 'Sensor 4 Dew point',
         data: sensor4Data,
         borderColor: 'rgba(239,68,68,1)', // red-500
         backgroundColor: 'rgba(239,68,68,0.1)',
@@ -278,7 +334,7 @@ export default function MonitoringShipPage() {
         ticks: { autoSkip: true, maxTicksLimit: 12 },
       },
       y: {
-        title: { display: true, text: 'Sensor Value (mm/year)' },
+        title: { display: true, text: 'Sensor Value' },
         beginAtZero: true,
       },
     },
