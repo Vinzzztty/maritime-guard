@@ -3,7 +3,7 @@ import Image from "next/image";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import SessionProviderWrapper from "./components/SessionProviderWrapper";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
@@ -30,8 +30,43 @@ const FAQS = [
   },
 ];
 
+const carouselImages = [
+  { src: "dashboard.webp", alt: "Dashboard Preview 1" },
+  { src: "dashboard2.webp", alt: "Dashboard Preview 2" },
+  { src: "dashboard3.webp", alt: "Dashboard Preview 3" },
+];
+
+const carouselDotColors = [
+  "bg-green-400",
+  "bg-yellow-400",
+  "bg-red-400"
+];
+
+function DashboardCarousel({ current, setCurrent }: { current: number; setCurrent: (idx: number) => void }) {
+  // Auto-slide every 3 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrent(current === carouselImages.length - 1 ? 0 : current + 1);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [current]);
+
+  return (
+    <div className="relative w-full h-72 sm:h-96 bg-gradient-to-r from-blue-200 via-blue-100 to-blue-50 rounded-xl flex items-center justify-center overflow-hidden">
+      <img
+        src={carouselImages[current].src}
+        alt={carouselImages[current].alt}
+        className="object-contain h-full w-full transition-all duration-300"
+        style={{ maxHeight: "100%", maxWidth: "100%" }}
+      />
+      {/* Dots (if you want them inside the carousel, you can move this here) */}
+    </div>
+  );
+}
+
 export default function Home() {
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [current, setCurrent] = useState(0);
+  const handleDotClick = (idx: number) => setCurrent(idx);
   const { data: session, status } = useSession();
   const router = useRouter();
 
@@ -90,13 +125,15 @@ export default function Home() {
             {/* Dashboard Mockup Placeholder */}
             <div className="w-full flex justify-center">
               <div className="bg-white/80 rounded-2xl shadow-2xl border border-blue-100 p-6 w-full max-w-2xl flex flex-col items-center animate-fade-in">
-                <div className="w-full h-40 sm:h-56 bg-gradient-to-r from-blue-200 via-blue-100 to-blue-50 rounded-xl flex items-center justify-center">
-                  <span className="text-blue-400 text-2xl font-semibold">[ Dashboard Preview Placeholder ]</span>
-                </div>
+                <DashboardCarousel current={current} setCurrent={setCurrent} />
                 <div className="flex gap-4 mt-4">
-                  <span className="w-4 h-4 bg-green-400 rounded-full" />
-                  <span className="w-4 h-4 bg-yellow-400 rounded-full" />
-                  <span className="w-4 h-4 bg-red-400 rounded-full" />
+                  {carouselDotColors.map((color, idx) => (
+                    <span
+                      key={idx}
+                      className={`w-4 h-4 rounded-full border-2 border-blue-200 cursor-pointer transition-all duration-200 ${color} ${idx === current ? "ring-2 ring-blue-500 scale-110" : ""}`}
+                      onClick={() => handleDotClick(idx)}
+                    />
+                  ))}
                 </div>
               </div>
             </div>
@@ -197,26 +234,26 @@ export default function Home() {
           <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-3 max-w-6xl mx-auto">
             {[
               {
-                slug: "why-corrosion-matters",
+                href: "/education/page1",
                 title: "Why Corrosion Matters in Maritime Industry",
                 description: "Understand the impact of corrosion on ships and why early detection is crucial for safety and cost savings.",
               },
               {
-                slug: "sensor-technology-explained",
-                title: "How Our Sensor Technology Works",
-                description: "A deep dive into the science and technology behind our real-time corrosion sensors for ship hulls.",
+                href: "/education/page2",
+                title: "Steel Corrosion on Ship Hulls",
+                description: "Explore each card to understand the causes, types, impacts, and prevention of steel corrosion on ship hulls.",
               },
               {
-                slug: "compliance-and-reporting",
-                title: "Compliance & Reporting Simplified",
-                description: "Learn how our platform helps you meet maritime regulations and generate compliance-ready reports easily.",
+                href: "/education/page3",
+                title: "Ship Hull Corrosion Monitoring Technologies",
+                description: "Explore the latest technologies for monitoring and preventing corrosion on ship hulls",
               },
             ].map((post) => (
-              <div key={post.slug} className="bg-white rounded-2xl shadow-xl p-8 flex flex-col items-start hover:shadow-2xl transition-all duration-200 group border-t-4 border-blue-400 hover:scale-105 animate-fade-in-up">
+              <div key={post.href} className="bg-white rounded-2xl shadow-xl p-8 flex flex-col items-start hover:shadow-2xl transition-all duration-200 group border-t-4 border-blue-400 hover:scale-105 animate-fade-in-up">
                 <h3 className="font-semibold mb-2 text-blue-700 text-lg">{post.title}</h3>
                 <p className="text-gray-600 mb-4">{post.description}</p>
                 <a
-                  href={`/education/${post.slug}`}
+                  href={post.href}
                   className="mt-auto inline-block bg-blue-600 text-white px-6 py-2 rounded-full font-bold text-base shadow-lg hover:bg-blue-700 transition-all duration-200"
                 >
                   Read More
@@ -234,17 +271,17 @@ export default function Home() {
               <div key={faq.question} className="bg-blue-50 rounded-xl p-6 shadow-sm transition-all">
                 <button
                   className="w-full flex justify-between items-center text-left font-semibold text-blue-700 text-lg focus:outline-none"
-                  onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
-                  aria-expanded={openFaq === idx}
+                  onClick={() => {}}
+                  aria-expanded={false}
                   aria-controls={`faq-content-${idx}`}
                 >
                   {faq.question}
-                  <span className={`ml-2 transition-transform ${openFaq === idx ? "rotate-180" : "rotate-0"}`}>▼</span>
+                  <span className="ml-2 transition-transform rotate-0">▼</span>
                 </button>
                 <div
                   id={`faq-content-${idx}`}
-                  className={`overflow-hidden transition-all duration-300 ${openFaq === idx ? "max-h-40 mt-3 opacity-100" : "max-h-0 opacity-0"}`}
-                  aria-hidden={openFaq !== idx}
+                  className="overflow-hidden transition-all duration-300 max-h-0 opacity-0"
+                  aria-hidden={true}
                 >
                   <p className="text-gray-700 text-base">{faq.answer}</p>
                 </div>
