@@ -24,6 +24,9 @@ export default function ProtectedHomepage() {
   const [ships, setShips] = useState<Ship[]>([]); // Use Ship[]
   const [shipsLoading, setShipsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null); // Add error state
+  const [geminiLoading, setGeminiLoading] = useState(false);
+  const [geminiSummary, setGeminiSummary] = useState<string | null>(null);
+  const [geminiError, setGeminiError] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -242,24 +245,54 @@ export default function ProtectedHomepage() {
               </div>
             </div>
 
-            {/* Quick Actions */}
+            {/* Gemini AI Summary */}
             <div className="space-y-6">
               <div className="bg-white rounded-2xl shadow-xl p-6">
-                <h3 className="text-lg font-bold text-blue-800 mb-4">Quick Actions</h3>
-                <div className="space-y-3">
-                  <button 
-                    onClick={() => router.push('/add-ship')}
-                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Add New Ship
-                  </button>
-                  <button className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors">
-                    View Reports
-                  </button>
-                  <button className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors">
-                    Sensor Settings
-                  </button>
-                </div>
+                <h3 className="text-lg font-bold text-blue-800 mb-4">Gemini AI Summary</h3>
+                <button
+                  className="bg-blue-600 text-white px-6 py-3 rounded-lg text-lg font-semibold shadow-lg hover:bg-blue-700 transition-colors mb-4"
+                  onClick={async () => {
+                    setGeminiLoading(true);
+                    setGeminiSummary(null);
+                    setGeminiError(null);
+                    try {
+                      const response = await fetch('/api/gemini-summary', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ships }),
+                      });
+                      const data = await response.json();
+                      if (response.ok) {
+                        setGeminiSummary(data.summary);
+                      } else {
+                        setGeminiError(data.error || 'Failed to get summary');
+                      }
+                    } catch (err) {
+                      setGeminiError('Error fetching summary');
+                    } finally {
+                      setGeminiLoading(false);
+                    }
+                  }}
+                  disabled={geminiLoading}
+                >
+                  {geminiLoading ? 'Loading AI Summary...' : 'Get AI Fleet Summary'}
+                </button>
+                {geminiLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-700"></div>
+                    <span className="ml-2 text-gray-600">Generating summary...</span>
+                  </div>
+                ) : geminiError ? (
+                  <div className="mt-4 p-4 bg-red-100 rounded-lg w-full text-red-700">
+                    {geminiError}
+                  </div>
+                ) : (
+                  geminiSummary && (
+                    <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded text-gray-800 whitespace-pre-line">
+                      {geminiSummary}
+                    </div>
+                  )
+                )}
               </div>
 
               <div className="bg-white rounded-2xl shadow-xl p-6">
