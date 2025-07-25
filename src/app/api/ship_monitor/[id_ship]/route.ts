@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../../../lib/prisma';
 
-export async function GET(request: Request, { params }: { params: { id_ship: string } }) {
-  const { id_ship } = params;
+export async function GET(request: Request, context: any) {
+  const { id_ship } = context.params;
   try {
     const shipMonitor = await prisma.ship_monitor.findUnique({
       where: { id_ship: id_ship },

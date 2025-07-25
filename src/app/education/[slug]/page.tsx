@@ -15,7 +15,7 @@ const BLOG_POSTS = {
   },
 };
 
-export default async function EducationBlogDetail({ params }: { params: { slug: string } }) {
+export default function EducationBlogDetail({ params }: any) {
   // params is now always available, but making the function async silences the warning
   const post = BLOG_POSTS[params.slug as keyof typeof BLOG_POSTS];
   if (!post) return notFound();
