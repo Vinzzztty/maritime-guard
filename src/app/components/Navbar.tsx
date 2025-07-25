@@ -2,6 +2,7 @@
 import React from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
+import Image from "next/image";
 
 const Navbar = () => {
   const { data: session, status } = useSession();
@@ -22,7 +23,7 @@ const Navbar = () => {
       <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-3">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 font-extrabold text-xl text-blue-800 tracking-tight">
-          <span className="inline-block w-7 h-7 bg-blue-700 rounded-full flex items-center justify-center text-white font-bold text-lg">M</span>
+          <Image src="/logo.webp" alt="Logo" width={32} height={32} />
           MaritimeGuard
         </Link>
         

@@ -64,7 +64,6 @@ model Ship {
   user_id        BigInt? // New nullable field for foreign key
   user           tobacco_users? @relation("tobacco_usersToShip", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   monitorShips   Monitor_ship_id[]
-  monitorShipLogs Monitor_ship_log[]
   
   @@id([IMO_NUMBER])
   @@map("ships")
@@ -95,20 +94,36 @@ enum CorroctionStatus {
 
 model Monitor_ship_log {
   id                 Int      @id @default(autoincrement())
-  id_ship            String?
+  device_id          String?
+  timestamp          DateTime? @default(now())
+  corroction_status  String?
   sensor1            String?
   sensor2            String?
   sensor3            String?
   sensor4            String?
-  corroction_status  CorroctionStatus
-  timestamp          DateTime? @default(now())
-  ship               Ship?    @relation(fields: [id_ship], references: [IMO_NUMBER])
-  
+
   @@map("monitor_ship_log")
+}
+
+model Ship_monitor {
+  id_ship   String   @id
+  device1   String?
+  device2   String?
+  device3   String?
+  device4   String?
+
+  @@map("ship_monitor")
 }
 
 enum SensorStatus {
   Low
   Medium
   High
+}
+
+model Ship_device {
+  device_id String @id
+  id_ship   String
+
+  @@map("ship_device")
 }

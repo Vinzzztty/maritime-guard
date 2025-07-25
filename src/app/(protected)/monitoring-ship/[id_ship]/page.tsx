@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Navbar from "../../../components/Navbar";
 import Footer from "../../../components/Footer";
@@ -16,6 +16,7 @@ import {
   Legend,
 } from 'chart.js';
 // import zoomPlugin from 'chartjs-plugin-zoom'; // Uncomment after installing chartjs-plugin-zoom
+import SensorsCard from "./SensorsCard";
 
 ChartJS.register(
   CategoryScale,
@@ -28,13 +29,6 @@ ChartJS.register(
   // zoomPlugin,
 );
 
-const TIMEFRAMES = [
-  { label: "1 Day", value: "day" },
-  { label: "1 Week", value: "week" },
-  { label: "1 Month", value: "month" },
-  { label: "3 Month", value: "3month" },
-];
-
 function getOverallQuality(sensors: any[]) {
   if (sensors.some(s => s.status === "Critical")) return { label: "Critical", color: "red" };
   if (sensors.some(s => s.status === "Warning")) return { label: "Warning", color: "yellow" };
@@ -46,12 +40,18 @@ export default function MonitoringShipPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [loading, setLoading] = useState(true);
+  const [showSpinner, setShowSpinner] = useState(false);
   const [ship, setShip] = useState<any>(null);
   const [shipStatus, setShipStatus] = useState<boolean>(true); // true = on, false = off
   const [error, setError] = useState<string | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [sensorHistory, setSensorHistory] = useState<any[]>([]);
-  const [timeframe, setTimeframe] = useState<'day' | 'week' | 'month' | '3month'>('week');
+  const isFirstSensorLoad = useRef(true);
+
+  // State for device statuses from ship_monitor
+  const [deviceStatuses, setDeviceStatuses] = useState<{device1?: string, device2?: string, device3?: string, device4?: string}>({});
+  const [deviceStatusLoading, setDeviceStatusLoading] = useState(true);
+  const [deviceStatusError, setDeviceStatusError] = useState<string | null>(null);
 
   const shipId = params.id_ship as string;
 
@@ -64,41 +64,37 @@ export default function MonitoringShipPage() {
     }
 
     // Fetch ship data from API
-    const fetchShipData = async () => {
+    const fetchShipData = async (isInitial = false) => {
+      if (isInitial) setLoading(true);
       try {
-        setLoading(true);
         setError(null);
-        
         const response = await fetch(`/api/ships/${shipId}`);
-        
         if (!response.ok) {
           if (response.status === 404) {
-            // Ship not found - redirect to dashboard
             router.push("/dashboard");
             return;
           }
           throw new Error('Failed to fetch ship data');
         }
-        
         const shipData = await response.json();
         setShip(shipData);
-        // Set initial ship status based on fetched data
         setShipStatus(shipData.status === 'Active');
       } catch (err) {
         console.error('Error fetching ship data:', err);
         setError('Failed to load ship data. Please try again.');
       } finally {
-        setLoading(false);
+        if (isInitial) setLoading(false);
       }
     };
 
     // Fetch sensor history from backend (now via Next.js API proxy)
     const fetchSensorHistory = async () => {
       try {
-        const response = await fetch(`/api/monitor_ship_log/${shipId}?limit=10000`);
+        const limit = isFirstSensorLoad.current ? 200 : 50;
+        const response = await fetch(`/api/monitor_ship_log/${shipId}?limit=${limit}`);
         if (!response.ok) throw new Error('Failed to fetch sensor history');
         const data = await response.json();
-        // Parse sensor values as numbers
+        // If the backend returns an array directly, use it; otherwise, fallback to .sensorHistory
         const parsed = (Array.isArray(data) ? data : data.sensorHistory || []).map((entry: any) => ({
           ...entry,
           sensor1: entry.sensor1 !== undefined ? Number(entry.sensor1) : undefined,
@@ -107,17 +103,74 @@ export default function MonitoringShipPage() {
           sensor4: entry.sensor4 !== undefined ? Number(entry.sensor4) : undefined,
         }));
         setSensorHistory(parsed);
+        isFirstSensorLoad.current = false;
       } catch (err) {
         console.error('Error fetching sensor history:', err);
       }
     };
 
-    fetchShipData();
+    fetchShipData(true); // Initial load shows spinner
     fetchSensorHistory();
-    // Poll every 10 seconds for real-time updates
-    const interval = setInterval(fetchSensorHistory, 10000);
-    return () => clearInterval(interval);
+
+    const fetchDeviceStatuses = async () => {
+      setDeviceStatusLoading(true);
+      setDeviceStatusError(null);
+      try {
+        const res = await fetch(`/api/ship_monitor/${shipId}`);
+        if (!res.ok) throw new Error('Failed to fetch device statuses');
+        const data = await res.json();
+        setDeviceStatuses({
+          device1: data.device1,
+          device2: data.device2,
+          device3: data.device3,
+          device4: data.device4,
+        });
+      } catch (err: any) {
+        setDeviceStatusError(err.message || 'Failed to fetch device statuses');
+        setDeviceStatuses({});
+      } finally {
+        setDeviceStatusLoading(false);
+      }
+    };
+    fetchDeviceStatuses();
+    // Removed polling/interval logic
+    return () => {};
   }, [session, status, router, shipId]);
+
+  // Delayed spinner effect
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (loading) {
+      timer = setTimeout(() => setShowSpinner(true), 400); // Show spinner only if loading > 400ms
+    } else {
+      setShowSpinner(false);
+    }
+    return () => clearTimeout(timer);
+  }, [loading]);
+
+  // Add manual refresh state
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefreshSensorHistory = async () => {
+    setRefreshing(true);
+    try {
+      const limit = 60;
+      const response = await fetch(`/api/monitor_ship_log/${shipId}?limit=${limit}`);
+      if (!response.ok) throw new Error('Failed to fetch sensor history');
+      const data = await response.json();
+      const parsed = (Array.isArray(data) ? data : data.sensorHistory || []).map((entry: any) => ({
+        ...entry,
+        sensor1: entry.sensor1 !== undefined ? Number(entry.sensor1) : undefined,
+        sensor2: entry.sensor2 !== undefined ? Number(entry.sensor2) : undefined,
+        sensor3: entry.sensor3 !== undefined ? Number(entry.sensor3) : undefined,
+        sensor4: entry.sensor4 !== undefined ? Number(entry.sensor4) : undefined,
+      }));
+      setSensorHistory(parsed);
+    } catch (err) {
+      console.error('Error refreshing sensor history:', err);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const handleStatusToggle = async () => {
     if (!ship || updatingStatus) return;
@@ -160,7 +213,7 @@ export default function MonitoringShipPage() {
     }
   };
 
-  if (loading || status === "loading") {
+  if ((loading || status === "loading") && showSpinner) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-100">
         <div className="text-center">
@@ -196,76 +249,95 @@ export default function MonitoringShipPage() {
     return null;
   }
 
-  const quality = getOverallQuality(ship.sensors);
+  // Only keep the most recent 60 sensor history entries for visualization
+  const recentSensorHistory = sensorHistory.slice(0, 60);
 
-  // Map sensorHistory to each sensor for charting
-  const getSensorData = (sensorIdx: number) => {
-    const now = new Date();
-    let points: Date[] = [];
-    let labels: string[] = [];
-    let count = 0;
-    if (timeframe === 'day') {
-      count = 24;
-      // Last 24 hours
-      for (let i = 23; i >= 0; i--) {
-        const d = new Date(now);
-        d.setHours(now.getHours() - i, 0, 0, 0);
-        points.push(new Date(d));
-        labels.push(d.getHours().toString().padStart(2, '0') + ':00');
-      }
-    } else if (timeframe === 'week') {
-      count = 7;
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(now.getDate() - i);
-        points.push(new Date(d));
-        labels.push(d.toLocaleDateString(undefined, { weekday: 'short' }));
-      }
-    } else if (timeframe === 'month') {
-      count = 30;
-      for (let i = 29; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(now.getDate() - i);
-        points.push(new Date(d));
-        labels.push((d.getMonth() + 1) + '/' + d.getDate());
-      }
-    } else if (timeframe === '3month') {
-      count = 90;
-      for (let i = 89; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(now.getDate() - i);
-        points.push(new Date(d));
-        labels.push((d.getMonth() + 1) + '/' + d.getDate());
-      }
-    }
-    // Group sensorHistory by point (hour or day)
-    const grouped: Record<string, number[]> = {};
-    for (const entry of sensorHistory) {
-      let key = '';
-      if (timeframe === 'day') {
-        key = new Date(entry.timestamp).toISOString().slice(0, 13); // hour
-      } else {
-        key = new Date(entry.timestamp).toISOString().slice(0, 10); // day
-      }
-      if (!grouped[key]) grouped[key] = [];
-      const value = entry[`sensor${sensorIdx}`];
-      if (typeof value === 'number') grouped[key].push(value);
-    }
-    const data = points.map(d => {
-      let key = '';
-      if (timeframe === 'day') {
-        key = d.toISOString().slice(0, 13);
-      } else {
-        key = d.toISOString().slice(0, 10);
-      }
-      const values = grouped[key] || [];
-      if (values.length === 0) return null;
-      return values.reduce((a, b) => a + b, 0) / values.length;
-    });
-    return {
-      data,
-      labels,
-    };
+  // Use device1, device2, device3, device4 from deviceStatuses as status values
+  const allStatuses = [deviceStatuses.device1, deviceStatuses.device2, deviceStatuses.device3, deviceStatuses.device4].filter(Boolean);
+
+  // Debug logs
+  console.log('deviceStatuses', deviceStatuses);
+  console.log('allStatuses', allStatuses);
+
+  // Determine overall status
+  let overallStatus = "Unknown";
+  if (allStatuses.length === 0) {
+    overallStatus = "Unknown";
+  } else if (allStatuses.includes("High")) {
+    overallStatus = "High";
+  } else if (allStatuses.includes("Medium")) {
+    overallStatus = "Medium";
+  } else if (allStatuses.every(status => status === "Low")) {
+    overallStatus = "Low";
+  }
+  console.log('overallStatus', overallStatus);
+
+  const quality = {
+    label: overallStatus === "High" ? "Critical"
+          : overallStatus === "Medium" ? "Warning"
+          : overallStatus === "Low" ? "Good"
+          : "Unknown",
+    color: overallStatus === "High" ? "red"
+          : overallStatus === "Medium" ? "yellow"
+          : overallStatus === "Low" ? "green"
+          : "gray"
+  };
+
+  // Prepare data for line chart visualization (last 60 entries)
+  const chartLabels = recentSensorHistory.map(entry => new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+  const sensor1Data = recentSensorHistory.map(entry => entry.sensor1);
+  const sensor2Data = recentSensorHistory.map(entry => entry.sensor2);
+  const sensor3Data = recentSensorHistory.map(entry => entry.sensor3);
+  const sensor4Data = recentSensorHistory.map(entry => entry.sensor4);
+  const chartData = {
+    labels: chartLabels,
+    datasets: [
+      {
+        label: 'Sensor 1 Humidity',
+        data: sensor1Data,
+        borderColor: 'rgba(59,130,246,1)', // blue-500
+        backgroundColor: 'rgba(59,130,246,0.1)',
+        tension: 0.4,
+      },
+      {
+        label: 'Sensor 2 pH',
+        data: sensor2Data,
+        borderColor: 'rgba(16,185,129,1)', // green-500
+        backgroundColor: 'rgba(16,185,129,0.1)',
+        tension: 0.4,
+      },
+      {
+        label: 'Sensor 3 Conductivity',
+        data: sensor3Data,
+        borderColor: 'rgba(234,179,8,1)', // yellow-500
+        backgroundColor: 'rgba(234,179,8,0.1)',
+        tension: 0.4,
+      },
+      {
+        label: 'Sensor 4 Dew point',
+        data: sensor4Data,
+        borderColor: 'rgba(239,68,68,1)', // red-500
+        backgroundColor: 'rgba(239,68,68,0.1)',
+        tension: 0.4,
+      },
+    ],
+  };
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: { display: true },
+      tooltip: { enabled: true, mode: 'index' as const, intersect: false },
+    },
+    scales: {
+      x: {
+        title: { display: true, text: 'Time' },
+        ticks: { autoSkip: true, maxTicksLimit: 12 },
+      },
+      y: {
+        title: { display: true, text: 'Sensor Value' },
+        beginAtZero: true,
+      },
+    },
   };
 
   return (
@@ -294,6 +366,16 @@ export default function MonitoringShipPage() {
               <span>•</span>
               <span>Location: {ship.location}</span>
             </div>
+          </div>
+
+                    {/* Ship Image */}
+                    <div className="flex justify-center mb-8">
+            <img
+              src="/hd_ship.webp"
+              alt="Ship"
+              className="w-full max-w-md rounded-2xl shadow-lg border border-blue-200 object-cover"
+              style={{ maxHeight: 240 }}
+            />
           </div>
 
           {/* Ship Status Overview */}
@@ -335,7 +417,7 @@ export default function MonitoringShipPage() {
             </div>
             
             <div className="bg-white rounded-2xl shadow-xl p-6 border-t-4 border-blue-400">
-              <h3 className="text-lg font-bold text-blue-800 mb-2">Overall Quality</h3>
+              <h3 className="text-lg font-bold text-blue-800 mb-2">Overall Status</h3>
               <div className="flex items-center gap-3">
                 <span className={`w-4 h-4 rounded-full bg-${quality.color}-500`}></span>
                 <span className="font-semibold text-gray-900">{quality.label}</span>
@@ -343,158 +425,35 @@ export default function MonitoringShipPage() {
             </div>
             
             <div className="bg-white rounded-2xl shadow-xl p-6 border-t-4 border-blue-400">
-              <h3 className="text-lg font-bold text-blue-800 mb-2">Active Sensors</h3>
+              <h3 className="text-lg font-bold text-blue-800 mb-2">Active Devices</h3>
               <span className="text-2xl font-bold text-gray-900">{ship.sensors.length}</span>
             </div>
           </div>
 
-          {/* Timeframe Selector Button Group */}
-          <div className="mb-8 flex gap-2 items-center justify-end">
-            <span className="font-medium text-gray-700 mr-2">Timeframe:</span>
-            {TIMEFRAMES.map(tf => (
-              <button
-                key={tf.value}
-                onClick={() => setTimeframe(tf.value as 'day' | 'week' | 'month' | '3month')}
-                className={`px-4 py-1 rounded-full border text-sm font-semibold transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2
-                  ${timeframe === tf.value ? 'bg-blue-600 text-white border-blue-600 shadow' : 'bg-white text-blue-700 border-blue-300 hover:bg-blue-50'}`}
-                style={{ minWidth: 80 }}
-              >
-                {tf.label}
-              </button>
-            ))}
-          </div>
 
-          {/* Sensors Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-            {ship.sensors.map((sensor: any, idx: number) => (
-              <div
-                key={sensor.id}
-                className={`bg-white rounded-2xl shadow-2xl p-8 border-t-4 border-blue-400 hover:shadow-2xl transition-shadow duration-200 flex flex-col ${!shipStatus ? 'opacity-50' : ''}`}
-                style={{ minHeight: 400 }}
+          {/* Sensors Grid (Realtime) */}
+          <SensorsCard shipId={shipId} shipStatus={shipStatus} />
+
+          {/* Line Chart Visualization for Recent Sensor History */}
+          <div className="bg-white rounded-2xl shadow-xl p-8 border-t-4 border-blue-400 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-blue-800">Sensor History (Last 60 Entries)</h2>
+              <button
+                onClick={handleRefreshSensorHistory}
+                disabled={refreshing}
+                className={`px-4 py-2 rounded-lg font-semibold border border-blue-500 text-blue-700 bg-white hover:bg-blue-50 transition-colors ${refreshing ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <span className={`w-4 h-4 rounded-full bg-${
-                      shipStatus ? sensor.color : 'gray'
-                    }-500 border-2 border-white shadow`}></span>
-                    <span className={`font-bold text-lg ${
-                      shipStatus ? 'text-blue-800' : 'text-gray-500'
-                    }`}>{sensor.name}</span>
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-sm font-bold ${
-                    !shipStatus ? 'bg-gray-100 text-gray-600 border border-gray-300' :
-                    sensor.status === 'Good' ? 'bg-green-100 text-green-800 border border-green-300' :
-                    sensor.status === 'Warning' ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' :
-                    'bg-red-100 text-red-800 border border-red-300'
-                  }`}>
-                    {shipStatus ? sensor.status : 'Inactive'}
-                  </span>
-                </div>
-                
-                {/* Current Value */}
-                <div className="mb-4">
-                  <div className={`text-3xl font-bold ${
-                    shipStatus ? 'text-gray-900' : 'text-gray-400'
-                  }`}>
-                    {shipStatus ? sensor.value : '--'}
-                  </div>
-                  <div className={`text-sm ${
-                    shipStatus ? 'text-gray-600' : 'text-gray-400'
-                  }`}>
-                    {shipStatus ? sensor.unit : 'No data'}
-                  </div>
-                </div>
-                
-                {/* Interactive ChartJS Line Chart */}
-                {(() => {
-                  const { data, labels } = getSensorData(idx + 1);
-                  const validData = data.filter(v => v !== null);
-                  if (validData.length === 0) {
-                    return (
-                      <div className="flex items-center justify-center h-60 text-gray-400">No Data</div>
-                    );
-                  }
-                  // Chart.js expects undefined for missing points
-                  const chartData = {
-                    labels,
-                    datasets: [
-                      {
-                        label: sensor.name,
-                        data: data.map(v => v === null ? undefined : v),
-                        borderColor: sensor.color === 'yellow' ? 'black' : sensor.color,
-                        backgroundColor: 'rgba(0,0,0,0)',
-                        pointBackgroundColor: sensor.color === 'yellow' ? 'black' : sensor.color,
-                        pointRadius: 4,
-                        pointHoverRadius: 7,
-                        pointHoverBackgroundColor: '#2563eb', // blue-600
-                        tension: 0.4,
-                        spanGaps: true,
-                        borderWidth: 3,
-                      },
-                    ],
-                  };
-                  const chartOptions = {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: { display: false },
-                      tooltip: { enabled: true, mode: 'index' as const, intersect: false },
-                      // zoom: {
-                      //   pan: { enabled: true, mode: 'x' },
-                      //   zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
-                      // },
-                    },
-                    hover: { mode: 'nearest' as const, intersect: true },
-                    scales: {
-                      x: {
-                        ticks: {
-                          autoSkip: false,
-                          maxRotation: 0,
-                          minRotation: 0,
-                          color: '#888',
-                          font: { size: 12, weight: 'bold' as const },
-                          callback: function(value: any, index: number) {
-                            if (timeframe === 'day') {
-                              return index % 3 === 0 ? labels[index] : '';
-                            } else if (timeframe === 'week') {
-                              return labels[index];
-                            } else if (timeframe === 'month') {
-                              return index % 5 === 0 || index === labels.length - 1 ? labels[index] : '';
-                            } else if (timeframe === '3month') {
-                              // Show 6 labels: first, every 18th, and last
-                              return (index === 0 || index % 18 === 0 || index === labels.length - 1)
-                                ? new Date(new Date().setDate(new Date().getDate() - (labels.length - 1 - index))).toLocaleDateString(undefined, { month: 'short', day: '2-digit' })
-                                : '';
-                            }
-                            return labels[index];
-                          },
-                        },
-                        grid: { display: true, color: '#e0e7ef' },
-                        title: { display: true, text: 'Time', color: '#2563eb', font: { size: 14, weight: 'bold' as const } },
-                      },
-                      y: {
-                        beginAtZero: true,
-                        ticks: { color: '#888', font: { size: 12, weight: 'bold' as const } },
-                        grid: { color: '#e0e7ef' },
-                        title: { display: true, text: sensor.unit, color: '#2563eb', font: { size: 14, weight: 'bold' as const } },
-                      },
-                    },
-                  };
-                  // Reset zoom button (future, after plugin install)
-                  // <button onClick={() => chartRef.current?.resetZoom()}>Reset Zoom</button>
-                  return (
-                    <div className="relative w-full" style={{ height: 240, minHeight: 180 }}>
-                      <Line data={chartData} options={chartOptions} />
-                    </div>
-                  );
-                })()}
-              </div>
-            ))}
+                {refreshing ? 'Refreshing...' : 'Refresh'}
+              </button>
+            </div>
+            <div className="w-full" style={{ minHeight: 300 }}>
+              <Line data={chartData} options={chartOptions} />
+            </div>
           </div>
 
           {/* Quality Assessment */}
           <div className="bg-white rounded-2xl shadow-xl p-8 border-t-4 border-blue-400">
-            <h2 className="text-2xl font-bold text-blue-800 mb-4">Quality Assessment</h2>
+            <h2 className="text-2xl font-bold text-blue-800 mb-4">Predictive Maintenance</h2>
             <div className="flex items-center gap-4 mb-4">
               <span className={`w-6 h-6 rounded-full bg-${
                 shipStatus ? quality.color : 'gray'

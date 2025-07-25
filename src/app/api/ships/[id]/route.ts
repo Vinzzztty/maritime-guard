@@ -21,30 +21,36 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     return NextResponse.json({ error: 'Ship not found' }, { status: 404 });
   }
 
-  // Fetch the latest monitor log for this ship
-  const latestLog = await prisma.monitor_ship_log.findFirst({
+  // Fetch ship_monitor status for this ship
+  const shipMonitor = await prisma.ship_monitor.findUnique({
     where: { id_ship: imo },
-    orderBy: { timestamp: 'desc' },
   });
 
-  // Fetch sensor history for the last 24 hours, grouped by hour
+  // Fetch logs directly from DB using join
+  const logs = await prisma.$queryRawUnsafe(
+    `SELECT l.id, l.device_id, d.id_ship, l.timestamp, l.corroction_status, l.sensor1, l.sensor2, l.sensor3, l.sensor4
+     FROM monitor_ship_log l
+     JOIN ship_device d ON l.device_id = d.device_id
+     WHERE d.id_ship = $1
+     ORDER BY l.timestamp DESC
+     LIMIT $2`,
+    imo,
+    10000 // match previous limit for history
+  ) as any[];
+
+  // Find the latest log by timestamp
+  let latestLog = null;
+  if (logs.length > 0) {
+    latestLog = logs.reduce((a: any, b: any) => new Date(a.timestamp) > new Date(b.timestamp) ? a : b);
+  }
+
+  // Group logs by hour for the last 24 hours
   const now = new Date();
   const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const logs = await prisma.monitor_ship_log.findMany({
-    where: {
-      id_ship: imo,
-      timestamp: {
-        gte: oneDayAgo,
-        lte: now,
-      },
-    },
-    orderBy: { timestamp: 'asc' },
-  });
-
-  // Group logs by hour
+  const logsLastDay = logs.filter((log: any) => new Date(log.timestamp) >= oneDayAgo && new Date(log.timestamp) <= now);
   const hourMap = new Map();
-  for (const log of logs) {
-    const hour = getHourStart(log.timestamp ?? new Date()).toISOString();
+  for (const log of logsLastDay) {
+    const hour = getHourStart(new Date(log.timestamp ?? new Date())).toISOString();
     if (!hourMap.has(hour)) {
       hourMap.set(hour, {
         timestamp: hour,
@@ -118,6 +124,12 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     timestamp: latestLog?.timestamp,
     corroction_status: latestLog?.corroction_status,
     sensorHistory,
+    ship_monitor: shipMonitor ? {
+      device1: shipMonitor.device1,
+      device2: shipMonitor.device2,
+      device3: shipMonitor.device3,
+      device4: shipMonitor.device4,
+    } : undefined,
   });
 }
 
