@@ -371,10 +371,10 @@ export default function MonitoringShipPage() {
                     {/* Ship Image */}
                     <div className="flex justify-center mb-8">
             <img
-              src="/hd_ship.webp"
+              src="/lambung_iot.webp"
               alt="Ship"
-              className="w-full max-w-md rounded-2xl shadow-lg border border-blue-200 object-cover"
-              style={{ maxHeight: 240 }}
+              className="w-full max-w-3xl rounded-2xl shadow-lg border border-blue-200 object-cover"
+              style={{ maxHeight: 700 }}
             />
           </div>
 

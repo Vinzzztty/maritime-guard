@@ -32,8 +32,8 @@ const FAQS = [
 
 const carouselImages = [
   { src: "dashboard.webp", alt: "Dashboard Preview 1" },
-  { src: "dashboard2.webp", alt: "Dashboard Preview 2" },
-  { src: "dashboard3.webp", alt: "Dashboard Preview 3" },
+  { src: "lambung_miring.webp", alt: "Dashboard Preview 2" },
+  { src: "lambung.webp", alt: "Dashboard Preview 3" },
 ];
 
 const carouselDotColors = [
@@ -208,7 +208,11 @@ export default function Home() {
             <div className="flex-1 flex justify-center items-center">
               <div className="w-full max-w-xs sm:max-w-sm md:max-w-md bg-white/80 rounded-2xl shadow-2xl border border-blue-100 p-6 flex flex-col items-center animate-fade-in">
                 <div className="w-full h-40 sm:h-56 bg-gradient-to-r from-blue-200 via-blue-100 to-blue-50 rounded-xl flex items-center justify-center">
-                  <span className="text-blue-400 text-xl font-semibold">[ Live Data Visualization ]</span>
+                  <img
+                    src="iot_web.webp"
+                    alt="Live Data Visualization"
+                    className="object-contain h-full w-full rounded-xl shadow"
+                  />
                 </div>
               </div>
             </div>
