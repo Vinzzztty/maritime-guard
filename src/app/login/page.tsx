@@ -67,7 +67,7 @@ function LoginPage() {
         >
           <h2 className="text-2xl font-bold text-blue-800 text-center">Sign In</h2>
           <p className="text-gray-600 text-center text-sm">
-            Access your tobacco shipping dashboard
+            Access your shipping fleet dashboard
           </p>
           
           {error && (
