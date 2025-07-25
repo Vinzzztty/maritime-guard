@@ -5,13 +5,11 @@ import { getToken } from 'next-auth/jwt';
 export async function GET(req: NextRequest) {
   try {
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-    console.log('DEBUG token:', token);
+    // console.log('DEBUG token:', token);
     if (!token || !token.id) {
-      console.log('DEBUG: No token or token.id');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const userId = token.id;
-    console.log('DEBUG userId:', userId);
 
     const ships = await prisma.ship.findMany({
       orderBy: {
